@@ -1,3 +1,3 @@
 # quicksort
 
-For project
+For project - ECE 30 
