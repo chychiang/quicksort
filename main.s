@@ -79,9 +79,9 @@ swap:
 	STUR	X3, [X0, #0]		//storing a[i] to a[j]
 
 doneswap: 
-	LDUR LR, [FP, #-16] 		// restore the return address
-	LDUR FP, [FP, #-24] 		// restore old frame pointer
-	ADDI SP, SP, #32 			// deallocate stack frame
+	LDUR 	LR, [FP, #-16] 		// restore the return address
+	LDUR 	FP, [FP, #-24] 		// restore old frame pointer
+	ADDI 	SP, SP, #32 			// deallocate stack frame
 	BR LR 						// return to the caller
 
 
@@ -97,7 +97,7 @@ doneswap:
 //X0 - starting address of list
 //X1 - size
 //X2 - leftmost index
-//X3 - rightmost inde
+//X3 - rightmost index
 
 //used registers
 //X5 = i
@@ -121,30 +121,63 @@ doneswap:
 //start of function
 partition:
 //allocating frame and stuff [WIP, im not entire confident on this section]
-	SUBI 	SP, SP, #16		//pushing stack frame
+	SUBI 	SP, SP, #40		//pushing stack frame
 	STUR 	FP, [SP, #0]	//save old frame ptr on the top of the stack
-	ADDI 	FP, SP, #8		//set new frame ptr
+	ADDI 	FP, SP, #32		//set new frame ptr
 	STUR 	LR, [FP, #-8]	//save the LR value
+	STUR 	X1, [FP, #-16]	//save "size X1"
+	STUR	X2, [FP, #-24]	//save "left X2"
+	STUR 	X3, [FP, #-32]	//save "right X3"
 
 //hold size, left, and right so that I don’t lose them in other function calls
-	MOV 	X7, X1 			//X7 holds size
-	MOV 	X8, X2 			//X8 holds left
-	MOV 	X9, X3 			//X9 holds right
+	//MOV 	X7, X1 			//X7 holds size
+	//MOV 	X8, X2 			//X8 holds left
+	//MOV 	X9, X3 			//X9 holds right
+	//Ben: I think it would be better to use stacks for value saving, since registers can be hard to organize. 
 
 //i and j set to leftmost index
-	MOV 	X5, X8 			//i is in X5
-	MOV 	X6, X8 			//j is in X6
-
-//Swap(a, (left+right)/2, right) = Swap (X0, X1, X2)
+	//MOV 	X5, X8 			//i is in X5
+	//MOV 	X6, X9 			//j, right is in X6
+//====================================================== NEW ADDITION HERE
+//Swap(a, (left+right)/2, right) = Swap (X0, X1, X2/X9)
 //X0 (a) is already set
-//X1 = (X8+X9)/2 (left+right)/2
-	ADD 	X1, X8, X9
-	ADDI 	X11, XZR, #2	//making a temporary reg for division (X11 = 2)
-	UDIV 	X1, X1, X11		// X1 divided by 2
-//X2 = X9(right)
+//X1(represents i) = (X8+X9)/2 (left+right)/2
 
-	MOV 	X2, X3
-	BL 		swap 			//calling swap function with parameters set
+//this part converts the two inputs to indexes, since they were inputted as addresses. 
+	ADDI 	X11, XZR, #8	//set x11 temp = 8 
+	UDIV	X2, X2, X11 	//X2 divided by 8 to obtain index
+	UDIV	X3, X3, X11 	//X3 same as above
+
+//this part does (left+right)/2
+	ADD 	X2, X2, X3 	
+	SUBI 	X11, X11, #6	//set x11 temp = 2
+	UDIV 	X1, X2, X11 	//X2 = (left+right)/2, saving to X1 since thats what swap wants
+	MOV 	X2, X3 			//moving X3 into X2, since this is what swap wants 
+	
+	//parameters for swap function set 
+	BL 		swap
+	//For next time: READ THIS - problems to solve
+	//1. the input to swap is ok, but the swap didn't do the job correctly
+	//2. could be the swap is faulty
+	//3. more likely: the two functions does not agree on the start of the index, casuing a faulty access. 
+
+	//retrieve the original value after function:swap
+	LDUR 	X1, [FP, #-16]	//save "size X1"
+	LDUR	X2, [FP, #-24]	//save "left X2"
+	LDUR 	X3, [FP, #-32]	//save "right X3"
+//======================================================
+
+//Swap(a, (left+right)/2, right) = Swap (X0, X1, X2/X9)
+//X0 (a) is already set
+//X1(represents i) = (X8+X9)/2 (left+right)/2
+	//ADD 	X1, X8, X9
+	//ADDI 	X11, XZR, #2	//making a temporary reg for division (X11 = 2)
+	//UDIV 	X1, X1, X11		// X1 divided by 2
+	//SUBI 	X11, X11, #2	//returning the value of X11 to 0 
+
+	//MOV 	X2, X3 			//X2 = X9(right)
+	//BL 		swap 			//calling swap function with parameters set
+
 
 //load value of pivot (a[right]) into X10
 	ADDI 	X11, XZR, #8 	//set X11 to 8
@@ -188,6 +221,7 @@ compareSwap:
 	MOV 	X1, X5 			//load i(X5) into X1
 	MOV 	X2, X6 			//load j(X6) into X2
 	BL 		swap 			//call swap with parameters set
+	//this will swap 
 
 	ADDI 	X6, X6, #1		//increment j by 1
 
