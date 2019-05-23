@@ -5,4 +5,3 @@ Log
 - swap function does not complete task correctly (swapping a[i] and a[j])
 - the result showed that swap might be accessing stuff outside of array
 - might be that the two functions does not agree on the index count. 
-below is the result of the correct input - incorrect output from swap: 
