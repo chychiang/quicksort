@@ -1,0 +1,8 @@
+Log
+20190523
+- fixed wrong input to swap function
+- instead of using registers to store values to be returned, now stores values on the stack (need to check whether it works or not) 
+- swap function does not complete task correctly (swapping a[i] and a[j])
+- the result showed that swap might be accessing stuff outside of array
+- might be that the two functions does not agree on the index count. 
+below is the result of the correct input - incorrect output from swap: 
