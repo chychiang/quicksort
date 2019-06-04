@@ -75,6 +75,8 @@ swap:
 	LDUR	X3, [FP, #0]		//restoring the first value of X3
 	ADD 	X0, X0, X2			//moving the data ptr to a[j]
 	STUR	X3, [X0, #0]		//storing a[i] to a[j]
+	SUB 	X0, X0, X2  
+
 
 done: 
 	LDUR LR, [FP, #-16] 		// restore the return address
@@ -117,150 +119,129 @@ done:
 
 //start of function
 partition:
-
-//allocating frame and stuff [WIP, im not entire confident on this section]
-SUBI SP, SP, #40		//pushing stack frame
-STUR FP, [SP, #0]	//save old frame ptr on the top of the stack
-ADDI FP, SP, #32		//set new frame ptr
-STUR LR, [FP, #-8]	//save the LR value
-
+	//allocating frame and stuff [WIP, im not entire confident on this section]
+	SUBI SP, SP, #24	//pushing stack frame
+	STUR FP, [SP, #0]	//save old frame ptr on the top of the stack
+	ADDI FP, SP, #16	//set new frame ptr
+	STUR LR, [FP, #-8]	//save the LR value
 
 partitionNoLink:
-//hold size, left, and right so that I don’t lose them in other function calls
-MOV X7, X1 //X7 holds size
-MOV X8, X2 //X8 holds left
-MOV X9, X3 //X9 holds right
-
-//i and j set to leftmost index
-MOV X5, X8 //i is in X5
-MOV X6, X8 //j is in X6
+	//hold size, left, and right so that I don’t lose them in other function calls
+	MOV X7, X1 //X7 holds size
+	MOV X8, X2 //X8 holds left
+	MOV X9, X3 //X9 holds right
 
 //Swap(a, (left+right)/2, right) = Swap (X0, X1, X2)
-//X0 (a) is already set
-//X1 = (X8+X9)/2 (left+right)/2
-ADD X1, X2, X3
-ADDI X11, XZR , #2
-UDIV X1, X1, X11		//X1 SET
-MOV X2, X3			//X2 SET
-BL swap
+	//X0 (a) is already set
+	//X1 = (X8+X9)/2 (left+right)/2
+	ADD X1, X2, X3
+	ADDI X11, XZR , #2
+	UDIV X1, X1, X11		//X1 SET
+	MOV X2, X3			//X2 SET
+	BL swap
 
-//need to restore the original input value??
-//if yes do this: 
-MOV X1, X7
-MOV X2, X8
-MOV X3, X9
+//i and j set to leftmost index
+	MOV X5, X8 //i is in X5
+	MOV X6, X8 //j is in X6
 
-
-
-//ADDI X11, XZR, #2	//making a temporary reg for division (X11 = 2)
-//ADD X1, X8, X9
-//UDIV X1, X1, X11		// X1 divided by 2
-//X2 = X9(right)
-//MOV X2, X3
-//BL swap //calling swap function with parameters set
-
+//pivot ← a[right]
 //load value of pivot (a[right]) into X10
-ADDI X11, XZR, #8 //set X11 to 8
-MUL X11, X2, X11 	//mul “right” by 8 to refer to the memory index
-ADD X0, X0, X11 	//shift a to index value “right”
-LDUR X10, [X0, #0] 	//load value into X10
-SUB X0, X0, X11 	//shift a back to its original position
+	ADDI X11, XZR, #8 //set X11 to 8
+	MUL X11, X9, X11 	//mul “right” by 8 to refer to the memory index
+	ADD X0, X0, X11 	//shift a to index value “right”
+	LDUR X10, [X0, #0] 	//load value into X10
+	SUB X0, X0, X11 	//shift a back to its original position
 
+
+//WHILE LOOP 
+//while i < right do:
 pivotLoop:
-SUBS XZR, X5, X9 //compare i and right
-B.LT contPivotLoop //if i<right, continue loop
-B endPivotLoop //otherwise end the loop
+	SUBS XZR, X5, X9 //compare i and right
+	B.LT contPivotLoop //if i<right, continue loop
+	B endPivotLoop //otherwise end the loop
 
 contPivotLoop:
-//loading a[i] (X0[X5]) into X12
-ADDI X11, XZR, #8 //set X11 to 8
-MUL X11, X5, X11 //mul i by 8 to refer to the memory index
-ADD X0, X0, X11 //shift a to the memory index value
-LDUR X12, [X0, #0] //load value into X10
-SUB X0, X0, X11 //shift a back to its original position
+	//loading a[i] (X0[X5]) into X12
+	ADDI X11, XZR, #8 	//set X11 to 8
+	MUL X11, X5, X11 	//mul i by 8 to refer to the memory index
+	ADD X0, X0, X11 	//shift a to the memory index value
+	LDUR X12, [X0, #0] 	//load value into X12
+	SUB X0, X0, X11 	//shift a back to its original position
 
 SUBS XZR, X12, X10 //compare a[i] (X12) to pivot (X10)
-B.LT compareSwap
-B.EQ checkIEven
-B compareDontSwap
+	B.LT compareSwap
+	B.EQ checkIEven
+	B compareDontSwap
 
 checkIEven:
-//to check if i is even, divide i by 2, then multiply it by 2, if even, i will equal its original value
-ADDI X1, XZR #2
-SDIV X11, X5, X1 //divide i by 2, rounded down, and store it in X11
-MUL X11, X11, X1 //multiply the divided value by 2
-SUBS XZR, X5, X11 //compare the original i to the rounded down to even version
-B.NE compareDontSwap //branch if the compare is not equal, that i is not even
+	//to check if i is even, divide i by 2, then multiply it by 2, if even, i will equal its original value
+	ADDI X1, XZR #2
+	SDIV X11, X5, X1 //divide i by 2, rounded down, and store it in X11
+	MUL X11, X11, X1 //multiply the divided value by 2
+	SUBS XZR, X5, X11 //compare the original i to the rounded down to even version
+	B.NE compareDontSwap //branch if the compare is not equal, that i is not even
 
 
-compareSwap: //come here if a[i] less than pivot, or a[i] = pivot and i even
-//swap (a, i, j): (X0 X1 X2)
-//X0 is already set to a
-MOV X1, X5 //load i(X5) into X1
-MOV X2, X6 //load j(X6) into X2
-BL swap //call swap with parameters set
-
-//increment j by 1
-ADDI X6, X6, #1
-
+compareSwap: //come here if a[i] less than pivot, OR a[i] = pivot and i even
+	//swap (a, i, j): (X0 X1 X2)
+	//X0 is already set to a
+	MOV X1, X5 		//load i(X5) into X1
+	MOV X2, X6 		//load j(X6) into X2
+	BL swap 		//call swap with parameters set
+	ADDI X6, X6, #1 //increment j 
 
 compareDontSwap: //jump here if a[i] greater than pivot, or a[i] = pivot and i is odd
-//increment i by 1
-ADDI X5, X5, #1
+	//increment i by 1
+	ADDI X5, X5, #1
+	B pivotLoop //jump back to the start of the while loop to do comparisons
 
-
-B pivotLoop //jump back to the start of the while loop to do comparisons
 
 endPivotLoop:
-//swap (a, j, right): (X0 X1 X2)
-//X0 is already set to a
-MOV X1, X6 //load j(X6) into X1
-MOV X2, X9 //load (a stable version of)right(X9) into X2
-BL Swap //call swap with parameters set
+	//swap (a, j, right): (X0 X1 X2)
+	//X0 is already set to a
+	MOV X1, X6 //load j(X6) into X1
+	MOV X2, X9 //load (a stable version of)right(X9) into X2
+	BL swap //call swap with parameters set
 
-//calling partition as a loop if certain conditions are not met
-//if j < size/4
-ADDI X1, XZR, #4
-SDIV X11, X7, X1 //divide size by 4, store it in X11
-SUBS XZR, X6, X11//compare j to size/4
-B.GE recursivePartitionCheck1//don’t do the following instructions if j >= size/4
+	ADDI X1, XZR, #4
+	SDIV X11, X7, X1  //divide size by 4, store it in X11
+	SUBS XZR, X6, X11 //compare j to size/4
+	B.GE recurPartitionCheck //don’t do the following instructions if j >= size/4
 
-//call partition again with the parameters: (a, size, j+1, right) = (X0 X1 X2 X3)
-//X0 is already set to a
-MOV X1, X7 //load size(X7) into X1
-MOV X2, X6 //load j(X6) into X2
-ADDI X2, X2, #1 //make X2 j+1 instead of just j
-MOV X3, X9 //load right(X9) into X3
-B partitionNoLink
+	//call partition again with the parameters: (a, size, j+1, right) = (X0 X1 X2 X3)
+	//X0 is already set to a
+	MOV X1, X7 //load size(X7) into X1
+	MOV X2, X6 //load j(X6) into X2
+	ADDI X2, X2, #1 //make X2 j+1 instead of just j
+	MOV X3, X9 //load right(X9) into X3
+	B partitionNoLink
 
 
-recursivePartitionCheck1:
-//else if j >= size - size/4
-ADDI 	X1, XZR, #4 //move the value 4 into X1
-SDIV X11, X7, X1 //divide size by 4, store it in X11
-SUB X11, X7, X11 //calculate size - size/4
-SUBS XZR, X6, X11//compare j to size - size/4
-B.LT endPartitionFunction //dont do the following instructions if j < size - size/4
+recurPartitionCheck:
+//else if j >= (size - size/4)
+	ADDI X1, XZR, #4 //move the value 4 into X1
+	SDIV X11, X7, X1 //divide size by 4, store it in X11
+	SUB X11, X7, X11 //calculate size - size/4
+	SUBS XZR, X6, X11//compare j to size - size/4
+	B.LT endPartition //dont do the following instructions if j < size - size/4
 
-//call partition again with the parameters: (a, size, left, j - 1) = (X0 X1 X2 X3)
-//X0 is already set to a
-MOV X1, X7 //load size(X7) into X1
-MOV X2, X8 //load left(X8) into X2
-MOV X3, X6 //load j(X6) into X3
-SUBI X3, X3, #1 //make X3 j-1 instead of just j
-B partitionNoLink
+	//call partition again with the parameters: (a, size, left, j - 1) = (X0 X1 X2 X3)
+	//X0 is already set to a
+	MOV X1, X7 //load size(X7) into X1
+	MOV X2, X8 //load left(X8) into X2
+	MOV X3, X6 //load j(X6) into X3
+	SUBI X3, X3, #1 //make X3 j-1 instead of just j
+	B partitionNoLink
 
 endPartition:
-//set X0 (the returned pivot index) to j (X6)
-MOV X0, X6
-
-//return to caller
-//popping stuff out of stack
-LDUR	LR, [FP, #-8]
-SUBI	FP, SP, #8
-LDUR	FP, [SP, #0]
-ADDI 	SP, SP, #16
-B LR		//link back to caller
+	//set X0 (the returned pivot index) to j(X6)
+	MOV X0, X6
+	//popping stuff out of stack
+	LDUR	LR, [FP, #-8]
+	SUBI	FP, SP, #16
+	LDUR	FP, [SP, #0]
+	ADDI 	SP, SP, #24
+	BR LR		//link back to caller
 
 //==============================================================================================================================
 ////////////////////////
@@ -273,47 +254,61 @@ B LR		//link back to caller
 //parameters: 
 //X0 - starting address of list (a)
 //X1 - # of integers in the list (SIZE)
+//other used registers:
 //X2 - stores the value from partition
+//X11 - temp
 //return value - none
 
 //start of the quicksort function
 quicksort: 
 
 	//allocation of stack frame
-	SUBI 	SP, SP, #32			//allocate stack frame
+	SUBI 	SP, SP, #40			//allocate stack frame
 	STUR	FP, [SP, #0]		//save old frame ptr on the top of the stack
-	ADDI	FP, SP, #24			//set new frame ptr
-	STUR	LR, [FP, #-16]		//save the LR value
-	STUR	X0, [FP, #-8]		//save the X0 value on stack, as X0 will be used by partition later
+	ADDI	FP, SP, #32			//set new frame ptr
+	STUR	LR, [FP, #-24]		//save the LR value
+	STUR	X0, [FP, #-16]		//save the X0 value on stack, as X0 will be used by partition later
+	stur 	x1, [fp, #-8]
 
 	SUBIS	XZR, X1, #1			//IF X1 > 1 
 	B.GT	true_cond			//branch to "true_cond"
 	B 		donequicksort		//false condition - skips all to "done"
 
 true_cond: 
-	ADDI	X2, XZR, #0			//initiating X2, making sure its 0
+	mov  	x2, xzr 			//X2 = 0 
 	SUBI 	X3, X1, #1			//X3 = size - 1
 	//a is already set
-	BL		partition			//call for partition, partition will store return value (pivot index) in X0
+	//partition (a, size, 0, size - 1) (X0,X1,X2,X3)
+	//all parameters are set now - call partition 
+	BL		partition			//calls partition, which will store return value (pivot index) in X0
 
-	ADD 	X2, X2, X0			//X2 (pivot position) = X2 + X0 <-- this X0 represents the pivot index
-	LDUR	X0, [FP, #-8]		//restore the value of X0 from stack, X0 now represents starting address of array
-	BL 		quicksort 			//call for quicksort(a,pivot_position) = (X0, X2) 
+	mov  	x1, X0 				//write the return value from partition as the second parameter (size) of function quicksort
+	LDUR	X0, [FP, #-16]		//restore the value of X0 from stack, X0 <- starting address of array 
+	//all parameters for quicksort(a, pivot_position) are set, call qs
+	BL 		quicksort 			//call for quicksort(a,pivot_position) = (X0, X1) 
 
 	//size - pivot_position - 1
-	STUR	X1, [FP, #0] 		//preserve the original value of X1  (SIZE)
-	SUBS 	X1, X1, X2			//size (X1) - pivot_position (X2)
-	SUBIS	X1, X1, #1			//size (X1) - 1	
+	//this one is wrong
+	//ldur  x1 [fp, #-8]	//load original value of x1(size)
+	//****
+	//FIX THIS 
+	/*lda x1, arraySize
+	ldur x1, [x1, #0]
+	addi 	x11, xzr, #8 	//x11 (temp) = 8
+	UDIV 	X2, X2, X11*/
+
+	SUBS 	X1, X1, X2		//size (X1) - pivot_position (X2)
+	SUBI	X1, X1, #1		//size (X1) - 1	
+	mul  	x11, x11, x2 
+	addi   	x11, x11, #8
+	add x0, x0, x11 	//address of a[pivot_position+1]
+	//x0 and x1 set, call quicksort...
 	BL 		quicksort
 
-	LDUR	X1, [FP, #0]		//restore original value of X0
-
-
-//false condition below, nothing happens
 donequicksort:
-	LDUR 	LR, [FP, #-16] 		//restore the return address
-	LDUR 	FP, [FP, #-24] 		//restore old frame pointer
-	ADDI 	SP, SP, #32 		//deallocate stack frame
+	LDUR 	LR, [FP, #-24] 		//restore the return address
+	LDUR 	FP, [SP, #0] 		//restore old frame pointer
+	ADDI 	SP, SP, #40 		//deallocate stack frame
 	BR 		LR 					//branch back to caller 
 //end of quicksort
     
