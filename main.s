@@ -269,6 +269,7 @@ quicksort:
 	STUR	LR, [FP, #-24]		//save the LR value
 	STUR	X0, [FP, #-16]		//save the X0 value on stack, as X0 will be used by partition later
 	stur 	x1, [fp, #-8]
+	
 
 	SUBIS	XZR, X1, #1			//IF X1 > 1 
 	B.GT	true_cond			//branch to "true_cond"
@@ -281,26 +282,23 @@ true_cond:
 	//partition (a, size, 0, size - 1) (X0,X1,X2,X3)
 	//all parameters are set now - call partition 
 	BL		partition			//calls partition, which will store return value (pivot index) in X0
-
+	Stur x0, [fp, #0]		//store
 	mov  	x1, X0 				//write the return value from partition as the second parameter (size) of function quicksort
 	LDUR	X0, [FP, #-16]		//restore the value of X0 from stack, X0 <- starting address of array 
 	//all parameters for quicksort(a, pivot_position) are set, call qs
 	BL 		quicksort 			//call for quicksort(a,pivot_position) = (X0, X1) 
 
 	//size - pivot_position - 1
-	//this one is wrong
-	//ldur  x1 [fp, #-8]	//load original value of x1(size)
-	//****
-	//FIX THIS 
-	/*lda x1, arraySize
-	ldur x1, [x1, #0]
-	addi 	x11, xzr, #8 	//x11 (temp) = 8
-	UDIV 	X2, X2, X11*/
-
-	SUBS 	X1, X1, X2		//size (X1) - pivot_position (X2)
+	ldur x0, [fp, #-16] 	//load original value of x0(starting address)
+	ldur x1, [fp, #-8]	//load original value of x1(size)
+	Ldur x2, [fp, #0]	//load original value of x2
+	SUB 	X1, X1, X2		//size (X1) - pivot_position (X2)
 	SUBI	X1, X1, #1		//size (X1) - 1	
+	//X1 should be set now
+	
+	addi   	x11, xzr, #8
 	mul  	x11, x11, x2 
-	addi   	x11, x11, #8
+	addi x11, x11, #8
 	add x0, x0, x11 	//address of a[pivot_position+1]
 	//x0 and x1 set, call quicksort...
 	BL 		quicksort
@@ -311,6 +309,7 @@ donequicksort:
 	ADDI 	SP, SP, #40 		//deallocate stack frame
 	BR 		LR 					//branch back to caller 
 //end of quicksort
+
     
 //==============================================================================================================================
 ////////////////////////
